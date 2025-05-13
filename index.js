@@ -110,7 +110,7 @@ async function run() {
     });
 
     // Get tasks by email
-    // Get tasks by email
+   
     app.get("/task", async (req, res) => {
       const tasks = await tasksCollection.find().toArray();
       res.send(tasks);
