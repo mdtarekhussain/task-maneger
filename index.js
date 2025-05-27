@@ -102,7 +102,7 @@ async function run() {
       const task = await tasksCollection.findOne({ _id: new ObjectId(id) });
 
       if (!task) {
-        return res.status(404).send({ message: "টাস্ক পাওয়া যায়নি" });
+        return res.status(404).send({ message: "টাস্ক পাওয়া যায়নি!" });
       }
 
       const result = await tasksCollection.deleteOne({ _id: new ObjectId(id) });
@@ -113,7 +113,7 @@ async function run() {
 
     app.get("/task", async (req, res) => {
       try {
-        const tasks = await taskCollection.find().toArray();
+        const tasks = await tasksCollection.find().toArray();
         res.send(tasks);
       } catch (error) {
         res.status(500).send({ message: "Server Error", error });
