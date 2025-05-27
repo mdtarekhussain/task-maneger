@@ -110,10 +110,14 @@ async function run() {
     });
 
     // Get tasks by email
-   
+
     app.get("/task", async (req, res) => {
-      const tasks = await tasksCollection.find().toArray();
-      res.send(tasks);
+      try {
+        const tasks = await taskCollection.find().toArray();
+        res.send(tasks);
+      } catch (error) {
+        res.status(500).send({ message: "Server Error", error });
+      }
     });
 
     await client.db("admin").command({ ping: 1 });
@@ -122,6 +126,9 @@ async function run() {
     );
   } catch (error) {
     console.error(error);
+  } finally {
+    // MongoClient stays open for server lifetime
+    // If you need to close in special cases, use: await client.close();
   }
 }
 
