@@ -24,6 +24,7 @@ async function run() {
 
     const userCollection = client.db("Taks_Manager").collection("users");
     const tasksCollection = client.db("Taks_Manager").collection("tasks");
+    const commentsCollection = client.db("Taks_Manager").collection("comments");
 
     // POST: add user
     app.post("/user", async (req, res) => {
@@ -110,13 +111,111 @@ async function run() {
     });
 
     // Get tasks by email
-
     app.get("/task", async (req, res) => {
       try {
         const tasks = await tasksCollection.find().toArray();
         res.send(tasks);
       } catch (error) {
         res.status(500).send({ message: "Server Error", error });
+      }
+    });
+
+    // ===== COMMENTS ENDPOINTS =====
+
+    // POST: add a new comment
+    app.post("/comments", async (req, res) => {
+      try {
+        const comment = req.body;
+        
+        // Validate required fields
+        if (!comment.taskId || !comment.text || !comment.email) {
+          return res.status(400).send({ message: "Missing required fields: taskId, text, email" });
+        }
+
+        // Get user information
+        const user = await userCollection.findOne({ email: comment.email });
+        if (!user) {
+          return res.status(404).send({ message: "User not found" });
+        }
+
+        // Verify the task exists
+        const task = await tasksCollection.findOne({ _id: new ObjectId(comment.taskId) });
+        if (!task) {
+          return res.status(404).send({ message: "Task not found" });
+        }
+
+        // Create new comment object
+        const newComment = {
+          taskId: comment.taskId,
+          text: comment.text,
+          email: comment.email,
+          name: user.name,
+          photo: user.photo,
+          createdAt: new Date(),
+        };
+
+        const result = await commentsCollection.insertOne(newComment);
+        res.send({
+          message: "Comment added successfully",
+          insertedId: result.insertedId,
+          comment: newComment
+        });
+      } catch (error) {
+        console.error("Error adding comment:", error);
+        res.status(500).send({ message: "Internal server error", error });
+      }
+    });
+
+    // GET: get all comments or comments for a specific task
+    app.get("/comments", async (req, res) => {
+      try {
+        const { taskId } = req.query;
+        
+        let comments;
+        
+        if (taskId) {
+          // Get comments for a specific task
+          comments = await commentsCollection
+            .find({ taskId: taskId })
+            .sort({ createdAt: -1 }) // Sort by newest first
+            .toArray();
+        } else {
+          // Get all comments
+          comments = await commentsCollection
+            .find({})
+            .sort({ createdAt: -1 })
+            .toArray();
+        }
+        
+        res.send(comments);
+      } catch (error) {
+        console.error("Error fetching comments:", error);
+        res.status(500).send({ message: "Server Error", error });
+      }
+    });
+
+    // DELETE: delete a comment by ID
+    app.delete("/comments/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+        
+        // First, check if the comment exists
+        const comment = await commentsCollection.findOne({ _id: new ObjectId(id) });
+        if (!comment) {
+          return res.status(404).send({ message: "Comment not found" });
+        }
+
+        // Delete the comment
+        const result = await commentsCollection.deleteOne({ _id: new ObjectId(id) });
+        
+        if (result.deletedCount === 0) {
+          return res.status(404).send({ message: "Comment not found" });
+        }
+
+        res.send({ message: "Comment deleted successfully", result });
+      } catch (error) {
+        console.error("Error deleting comment:", error);
+        res.status(500).send({ message: "Internal server error", error });
       }
     });
 
@@ -141,4 +240,7 @@ app.get("/", (req, res) => {
 // app.listen(port, () => {
 //   console.log(`Server is running on port ${port}`);
 // });
-module.exports = app;
+// module.exports = app;
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
+});
